@@ -4,6 +4,14 @@ import { createContext, useContext, useState, useRef, useMemo, ReactNode } from 
 import { useQuery } from "@tanstack/react-query"
 import type { App } from "../types"
 import { getApps } from "../services/apps"
+import {
+  filterAppsBySearch,
+  paginateApps,
+  calculateMaxPage,
+  updateLastSelectedApps,
+  createAppsByIdIndex,
+  getAppsFromLocalStorage,
+} from "../utils/appsUtils"
 
 interface AppsContextType {
   apps: App[]
@@ -36,17 +44,11 @@ export function AppsProvider({ children }: { children: ReactNode }) {
   
   const modalRef = useRef<HTMLDialogElement>(null)
   
-  const appsByAppId = useMemo(() => {
-    return apps.reduce((acc, app) => { 
-      acc[app.app_id] = app
-      return acc 
-    }, {} as Record<string, App>)
-  }, [apps])
+  const appsByAppId = useMemo(() => createAppsByIdIndex(apps), [apps])
 
   const lastSelectedApps = useMemo(() => {
     if (typeof window === 'undefined' || apps.length === 0) return []
-    const storedLastSelectedAppIds = JSON.parse(localStorage.getItem("lastSelectedApps") || "[]")
-    return storedLastSelectedAppIds.map((appId: string) => appsByAppId[appId])
+    return getAppsFromLocalStorage(appsByAppId)
   }, [apps, appsByAppId])
   
   const [internalLastSelectedApps, setInternalLastSelectedApps] = useState<App[]>(lastSelectedApps)
@@ -60,10 +62,7 @@ function handleSelectedApp(app: App) {
   setSelectedApp(app)
   modalRef.current?.showModal()
 
-  const updatedLastSelected = [
-    app,
-    ...internalLastSelectedApps.filter((a) => a.app_id !== app.app_id),
-  ].slice(0, 3)
+  const updatedLastSelected = updateLastSelectedApps(app, internalLastSelectedApps, 3)
   
   setInternalLastSelectedApps(updatedLastSelected)
   
@@ -71,13 +70,9 @@ function handleSelectedApp(app: App) {
   localStorage.setItem("lastSelectedApps", JSON.stringify(appIds))
 }
 
-  const normalizedSearch = search.toLowerCase()
-  const filteredApps = apps.filter((app) => 
-    app.name.toLowerCase().includes(normalizedSearch)
-  )
-
-  const maxPage = Math.ceil(filteredApps.length / 12) || 1
-  const pagedFilteredApps = filteredApps.slice((page - 1) * 12, page * 12)
+  const filteredApps = filterAppsBySearch(apps, search)
+  const maxPage = calculateMaxPage(filteredApps.length, 12)
+  const pagedFilteredApps = paginateApps(filteredApps, page, 12)
 
   const value = {
     apps,
