@@ -1,36 +1,38 @@
 'use client'
 
 import { useState, useRef, useEffect } from "react"
+import Image from "next/image"
+import type { App } from "./types"
 
 function Home() {
-  const [apps, setApps] = useState([])
+  const [apps, setApps] = useState<App[]>([])
 
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
 
-  const [selectedApp, setSelectedApp] = useState(null)
-  const [lastSelectedApps, setLastSelectedApps] = useState([])
+  const [selectedApp, setSelectedApp] = useState<App | null>(null)
+  const [lastSelectedApps, setLastSelectedApps] = useState<App[]>([])
 
-  const modalRef = useRef(null)
+  const modalRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     (async () => {
       const response = await fetch("https://pluga.co/ferramentas_search.json")
-      const apps = await response.json()
+      const apps: App[] = await response.json()
       setApps(apps)
 
-      const appsByAppId = apps.reduce((acc, app) => { acc[app.app_id] = app; return acc }, {})
-      const storedLastSelectedAppIds = JSON.parse(localStorage.getItem("lastSelectedApps")) || []
-      setLastSelectedApps(storedLastSelectedAppIds.map((appId) => appsByAppId[appId]))
+      const appsByAppId: Record<string, App> = apps.reduce((acc, app) => { acc[app.app_id] = app; return acc }, {} as Record<string, App>)
+      const storedLastSelectedAppIds: string[] = JSON.parse(localStorage.getItem("lastSelectedApps") || "[]")
+      setLastSelectedApps(storedLastSelectedAppIds.map((appId) => appsByAppId[appId]).filter(Boolean))
     })()
   }, [])
 
-  function handleSearch(value) {
+  function handleSearch(value: string) {
     setSearch(value)
     setPage(1)
   }
 
-  function handleSelectedApp(app) {
+  function handleSelectedApp(app: App) {
     setSelectedApp(app)
 
     const lastSelectedAppsSet = new Set(lastSelectedApps)
@@ -43,7 +45,7 @@ function Home() {
     const newLastSelectedAppIds = newLastSelectedApps.map((app) => app.app_id)
     localStorage.setItem("lastSelectedApps", JSON.stringify(newLastSelectedAppIds))
 
-    modalRef.current.showModal()
+    modalRef.current?.showModal()
   }
 
   const normalizedSearch = search.toLowerCase()
@@ -81,7 +83,7 @@ function Home() {
               {pagedFilteredApps.map((app) =>
                 <a key={app.app_id} onClick={() => handleSelectedApp(app)} className="card card-sm group bg-base-100 cursor-pointer transition shadow-sm hover:shadow-lg">
                   <figure style={{ backgroundColor: app.color }} className="p-6">
-                    <img src={app.icon} alt={app.name} width="64" height="64" className="transition group-hover:scale-110" />
+                    <Image src={app.icon} alt={app.name} width={64} height={64} className="transition group-hover:scale-110" />
                   </figure>
                   <div className="card-body min-h-17 text-center justify-center">
                     <h4>{app.name}</h4>
@@ -117,7 +119,7 @@ function Home() {
             <div className="mx-auto">
               <div className="flex gap-6">
                 <figure style={{ backgroundColor: selectedApp.color }} className="rounded-full p-10">
-                  <img src={selectedApp.icon} alt={selectedApp.name} width="64" height="64" />
+                  <Image src={selectedApp.icon} alt={selectedApp.name} width={64} height={64} />
                 </figure>
                 <div className="py-6">
                   <h2 className="mb-4 text-lg">
@@ -136,7 +138,7 @@ function Home() {
               {lastSelectedApps.toReversed().map((app) =>
                 <a key={app.app_id} onClick={() => handleSelectedApp(app)} className="card card-sm group bg-base-100 cursor-pointer transition shadow-sm hover:shadow-lg">
                   <figure style={{ backgroundColor: app.color }} className="p-6">
-                    <img src={app.icon} alt={app.name} width="64" height="64" className="transition group-hover:scale-110" />
+                    <Image src={app.icon} alt={app.name} width={64} height={64} className="transition group-hover:scale-110" />
                   </figure>
                   <div className="card-body min-h-17 text-center justify-center">
                     <h4>{app.name}</h4>
